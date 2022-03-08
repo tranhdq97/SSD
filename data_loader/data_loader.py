@@ -1,5 +1,4 @@
 import sys
-import os
 import cv2
 import torch
 from glob import glob
@@ -8,7 +7,7 @@ import torch.utils.data as data
 if sys.version_info[0] == 2:
     import xml.etree.cElementTree as ET
 else:
-    import xml.etree.ElementPath as ET
+    import xml.etree.ElementTree as ET
 
 
 VOC_CLASSES = ('human', 'mask', 'no_mask')
@@ -66,11 +65,30 @@ class VOCLoader(data.Dataset):
         self.root = root
         self.transform = transform
         self.target_transform = target_transform
-        self._anno_paths = os.path.join()
-        pass
+        self._anno_paths = sorted(glob(f'{root}/*.xml'))
+        self._img_paths = sorted(glob(f'{root}/*.jpg'))
+        if len(self._img_paths) != len(self._anno_paths):
+            raise ValueError(f"Got {len(self._anno_paths)} annotations," +
+                             f"{len(self._img_paths)} images")
 
+    def __getitem__(self, idx):
+        target = ET.parse(self._anno_paths[idx]).getroot()
+        img = cv2.imread(self._img_paths[idx])[:, :, (2, 1, 0)]
+        h, w, c = img.shape
+        if self.target_transform:
+            target = self.target_transform(target, w, h)
 
-    def __getitem__(self, item):
+        target = np.array(target).astype(np.float32)
+        if self.transform:
+            boxes, labels = (target[:, :4], target[:, 4]) if len(target) > 0 else ([], [])
+            img, boxes, labels = self.transform(img, boxes, labels)
+            if len(target) > 0:
+                target = np.hstack((boxes, np.expand_dims(labels, axis=1)))
 
-        return
+        else:
+            img = torch.from_numpy(img).permute(2, 0, 1)
 
+        return img, target
+
+    def __len__(self):
+        return len(self._img_paths)
