@@ -21,9 +21,9 @@ class SSD(nn.Module):
         head: 'mutil-box head' consists of loc and cof conv layers
     """
 
-    def __init__(self, phase, size, base, extras, head, num_classes, cfg):
+    def __init__(self, size, base, extras, head, num_classes, cfg):
         super().__init__()
-        self.phase = phase
+        self.phase = 'test'
         self.num_classes = num_classes
         self.size = size
         self.cfg = cfg
@@ -34,9 +34,8 @@ class SSD(nn.Module):
         self.extras = nn.ModuleList(extras)
         self.loc = nn.ModuleList(head[0])
         self.conf = nn.ModuleList(head[1])
-        if phase == 'test':
-            self.softmax = nn.Softmax(dim=-1)
-            self.detect = Detection(num_classes, 0, 200, 0.01, 0.45, self.cfg)
+        self.softmax = nn.Softmax(dim=-1)
+        self.detect = Detection(num_classes, 0, 200, 0.01, 0.45, self.cfg)
 
     def forward(self, x):
         """Applies network layers and ops on input image(s) x
@@ -45,9 +44,6 @@ class SSD(nn.Module):
             x (tensor | bs, 3, 300, 300)
         """
         sources, loc, conf = [], [], []
-        print('VGG: ', self.vgg)
-        print('Extras: ', self.extras)
-        print
         for k in range(23):
             x = self.vgg[k](x)
 
@@ -68,25 +64,30 @@ class SSD(nn.Module):
         loc = torch.cat([o.view(o.size(0), -1) for o in loc], 1)
         conf = torch.cat([o.view(o.size(0), -1) for o in conf], 1)
         if self.phase == 'test':
-            output = self.detect(
+            output = self.detect.forward(
                 loc.view(loc.size(0), -1, 4),
                 self.softmax(conf.view(conf.size(0), -1,
                                        self.num_classes)),
-                self.priors.type(type(x.data))
+                self.priors.type(type(x.data)).to(x.device)
             )
         else:
             output = (
                 loc.view(loc.size(0), -1, 4),
                 conf.view(conf.size(0), -1, self.num_classes),
-                self.priors
+                self.priors.to(x.device)
             )
         return output
 
+    def to_train(self):
+        self.train()
+        self.phase = 'train'
 
-def build_ssd(phase, size=300, num_classes=4, cfg=VOC):
-    if phase != 'test' and phase != 'train':
-        raise ValueError("ERROR: Phase: " + phase + " not recognized")
+    def to_eval(self):
+        self.eval()
+        self.phase = 'test'
 
+
+def build_ssd(size=300, num_classes=4, cfg=VOC):
     if size != 300:
         raise ValueError("Currently, only size 300 is supported")
 
@@ -94,4 +95,4 @@ def build_ssd(phase, size=300, num_classes=4, cfg=VOC):
                                       add_extras(EXTRAS[str(size)], 1024),
                                       MBOX[str(size)],
                                       num_classes)
-    return SSD(phase, size, base_, extras_, head_, num_classes, cfg)
+    return SSD(size, base_, extras_, head_, num_classes, cfg)

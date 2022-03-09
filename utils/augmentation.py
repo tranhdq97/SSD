@@ -91,9 +91,9 @@ class Augmentation:
     """Default augmentation"""
     def __init__(self, size=300, mean=(104, 117, 123)):
         self.augment = Compose([
-            RandomHFlip(),
+            # RandomHFlip(),
             Resize(size),
-            SubtractMeans(mean),
+            # SubtractMeans(mean),
             ToTensor(),
         ])
 

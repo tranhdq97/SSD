@@ -4,9 +4,7 @@ from utils.box import decode, nms
 
 
 class Detection(Function):
-    """TODO
-
-    """
+    """Detect is the final layer of SSD"""
     def __init__(self, num_classes, bkg_label, top_k, conf_thresh, nms_thresh,
                  cfg):
         self.num_classes = num_classes
@@ -26,7 +24,7 @@ class Detection(Function):
                 loc layers
             conf_data (tensor | bs * num_priors, num_classes): confidence
                 predictions from conf layers
-            prior_data (tensor | 1, num_priors, 4): prior boxes and variances
+            prior_data (tensor | num_priors, 4): prior boxes and variances
                 from prior_box layers
         """
         bs = loc_data.size(0)
@@ -50,7 +48,7 @@ class Detection(Function):
                     torch.cat((scores[ids[:count]].unsqueeze(1),
                                boxes[ids[:count]]), 1)
         flt = output.contiguous().view(bs, -1, 5)
-        _, idx = flt[:, :, 0].sort(1, decending=True)
+        _, idx = flt[:, :, 0].sort(1, descending=True)
         _, rank = idx.sort(1)
         flt[(rank < self.top_k).unsqueeze(-1).expand_as(flt)].fill_(0)
         return output

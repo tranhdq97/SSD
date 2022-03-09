@@ -4,13 +4,11 @@ import torch
 from glob import glob
 import numpy as np
 import torch.utils.data as data
+from configs.config import VOC_CLASSES
 if sys.version_info[0] == 2:
     import xml.etree.cElementTree as ET
 else:
     import xml.etree.ElementTree as ET
-
-
-VOC_CLASSES = ('human', 'mask', 'no_mask')
 
 
 class VOCAnnotationTransform:
@@ -41,7 +39,6 @@ class VOCAnnotationTransform:
                 cur_pt = int(bbox.find(pt).text) - 1
                 cur_pt = cur_pt / width if i % 2 == 0 else cur_pt / height
                 bndbox.append(cur_pt)
-
             bndbox.append(self.class_to_ind[name])
             res.append(bndbox)
 
@@ -88,7 +85,7 @@ class VOCLoader(data.Dataset):
         else:
             img = torch.from_numpy(img).permute(2, 0, 1)
 
-        return img, target
+        return img, target, (h, w)
 
     def __len__(self):
         return len(self._img_paths)

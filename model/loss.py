@@ -7,19 +7,13 @@ from utils.box import match, log_sum_exp
 
 class MultiBoxLoss(nn.Module):
     """SSD Weighted Loss Function"""
-    def __init__(self, cfg, overlap_thresh, prior_for_matching, bkg_label,
-                 neg_mining, neg_pos, neg_overlap, encode_target, device):
+    def __init__(self, cfg, overlap_thresh, neg_pos, device):
         super().__init__()
         self.device = device
         self.num_classes = cfg['num_classes']
         self.variance = cfg['variance']
         self.threshold = overlap_thresh
-        # self.bkg_label = bkg_label
-        # self.encode_target = encode_target
-        # self.use_prior_for_matching = prior_for_matching
-        # self.do_neg_mining = neg_mining
         self.negpos_ratio = neg_pos
-        # self.neg_overlap = neg_overlap
 
     def forward(self, predictions, targets):
         loc_data, conf_data, priors = predictions
@@ -31,7 +25,8 @@ class MultiBoxLoss(nn.Module):
         for idx in range(bs):
             truths = targets[idx][:, :-1].data
             labels = targets[idx][:, -1].data
-            defaults = priors.data
+            # defaults = priors.data
+            defaults = priors
             match(self.threshold, truths, defaults, self.variance, labels,
                   loc_t, conf_t, idx)
 
@@ -40,8 +35,6 @@ class MultiBoxLoss(nn.Module):
         loc_t = Variable(loc_t, requires_grad=False)
         conf_t = Variable(conf_t, requires_grad=False)
         pos = conf_t > 0
-        # TODO
-        # num_pos = pos.sum(dim=1, keepdim=True)
         pos_idx = pos.unsqueeze(pos.dim()).expand_as(loc_data)
         loc_p = loc_data[pos_idx].view(-1, 4)
         loc_t = loc_t[pos_idx].view(-1, 4)
@@ -51,8 +44,8 @@ class MultiBoxLoss(nn.Module):
         loss_c = log_sum_exp(batch_conf) - batch_conf.gather(1, conf_t.view(-1,
                                                                             1))
         # Hard Negative Mining
-        loss_c[pos] = 0  # filter out pos boxes for now
         loss_c = loss_c.view(bs, -1)
+        loss_c[pos] = 0  # filter out pos boxes for now
         _, loss_idx = loss_c.sort(1, descending=True)
         _, idx_rank = loss_idx.sort(1)
         num_pos = pos.long().sum(1, keepdim=True)

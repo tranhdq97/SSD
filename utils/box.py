@@ -1,4 +1,8 @@
+import os.path
+
+import numpy as np
 import torch
+from configs.config import VOC_CLASSES
 
 
 def to_point_form(boxes):
@@ -201,10 +205,10 @@ def nms(boxes, scores, overlap=0.5, top_k=200):
 
         idx = idx[:-1]
         # load bboxes of next highest values
-        torch.index_select(x1, 0, idx, out=xx1)
-        torch.index_select(y1, 0, idx, out=yy1)
-        torch.index_select(x2, 0, idx, out=xx2)
-        torch.index_select(y2, 0, idx, out=yy2)
+        xx1 = torch.index_select(x1, 0, idx)
+        yy1 = torch.index_select(y1, 0, idx)
+        xx2 = torch.index_select(x2, 0, idx)
+        yy2 = torch.index_select(y2, 0, idx)
         # store element-wise max with next highest score
         xx1 = torch.clamp(xx1, min=x1[i])
         yy1 = torch.clamp(yy1, min=y1[i])
