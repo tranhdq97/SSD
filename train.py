@@ -22,7 +22,8 @@ if __name__ == '__main__':
     num_workers = 1
     batch_size = 32
     epochs = 100000
-    device = torch.device('cuda:0')
+    # device = torch.device('cuda:0')
+    device = torch.device('cpu')
 
     # Dataset
     train_dataset = VOCLoader(root='data',

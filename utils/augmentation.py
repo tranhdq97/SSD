@@ -82,11 +82,6 @@ class SubtractMeans:
         return image.astype(np.float32), boxes, labels
 
 
-class Normalize:
-    # TODO: implement if SubtractMeans does not work
-    pass
-
-
 class Augmentation:
     """Default augmentation"""
     def __init__(self, size=300, mean=(104, 117, 123)):
